@@ -2,10 +2,10 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-
+using PaymentGateway.Api.Application.Dto;
 using PaymentGateway.Api.Controllers;
-using PaymentGateway.Api.Models.Responses;
-using PaymentGateway.Api.Services;
+using PaymentGateway.Api.Domain.Entities;
+using PaymentGateway.Api.Infrastructure.Repositories;
 
 namespace PaymentGateway.Api.Tests;
 
@@ -17,7 +17,7 @@ public class PaymentsControllerTests
     public async Task RetrievesAPaymentSuccessfully()
     {
         // Arrange
-        var payment = new PostPaymentResponse
+        var payment = new Payment
         {
             Id = Guid.NewGuid(),
             ExpiryYear = _random.Next(2023, 2030),
@@ -30,15 +30,26 @@ public class PaymentsControllerTests
         var paymentsRepository = new PaymentsRepository();
         paymentsRepository.Add(payment);
 
-        var webApplicationFactory = new WebApplicationFactory<PaymentsController>();
-        var client = webApplicationFactory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services => ((ServiceCollection)services)
-                .AddSingleton(paymentsRepository)))
-            .CreateClient();
+        var webApplicationFactory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    var descriptor = services.SingleOrDefault(
+                        d => d.ServiceType == typeof(IPaymentsRepository));
+
+                    if (descriptor != null)
+                        services.Remove(descriptor);
+
+                    services.AddSingleton<IPaymentsRepository>(paymentsRepository);
+                });
+            });
+
+        var client = webApplicationFactory.CreateClient();
 
         // Act
         var response = await client.GetAsync($"/api/Payments/{payment.Id}");
-        var paymentResponse = await response.Content.ReadFromJsonAsync<PostPaymentResponse>();
+        var paymentResponse = await response.Content.ReadFromJsonAsync<ProcessPaymentResult>();
         
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
