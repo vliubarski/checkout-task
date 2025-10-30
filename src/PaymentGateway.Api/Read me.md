@@ -85,6 +85,9 @@ case-insensitive settings and optional converters like
     `http://localhost:8080/payments`.
 3.  No persistent database is used --- the repository is in-memory for
     simplicity.
+4.  Added a human-readable PaymentStatusDescription field to improve API 
+    clarity - this duplicates the status value intentionally for better 
+    visibility in responses.
 
 ------------------------------------------------------------------------
 

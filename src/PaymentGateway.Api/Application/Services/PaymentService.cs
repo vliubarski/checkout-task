@@ -53,18 +53,9 @@ public class PaymentService : IPaymentService
 
         return new ProcessPaymentResult
         {
-            Payment = new Payment
-            {
-                Id = payment.Id,
-                Status = payment.Status,
-                Amount = payment.Amount,
-                Currency = payment.Currency,
-                CardNumberLastFour = payment.CardNumberLastFour,
-                ExpiryMonth = payment.ExpiryMonth,
-                ExpiryYear = payment.ExpiryYear
-            },
+            Payment = payment,
             PaymentStatus = payment.Status.ToString(),
-            ErrorMessage = "OK"
+            ErrorMessage = status == PaymentStatus.Declined ? "Payment is Declined by bank" : null
         };
     }
 

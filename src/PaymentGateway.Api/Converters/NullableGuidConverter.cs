@@ -16,8 +16,8 @@ public class NullableGuidConverter : JsonConverter<Guid?>
             if (string.IsNullOrWhiteSpace(s))
                 return Guid.Empty;
 
-            if (Guid.TryParse(s, out var g))
-                return g;
+            if (Guid.TryParse(s, out var guid))
+                return guid;
 
             throw new JsonException($"Invalid GUID value");
         }

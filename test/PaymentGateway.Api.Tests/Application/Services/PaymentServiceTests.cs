@@ -8,6 +8,7 @@ using PaymentGateway.Api.Infrastructure.Gateways;
 using PaymentGateway.Api.Infrastructure.Repositories;
 using PaymentGateway.Api.Models.Requests;
 using PaymentGateway.Api.Models.Responses;
+using PaymentGateway.Api.Application.Dto;
 
 public class PaymentServiceTests
 {
@@ -25,7 +26,7 @@ public class PaymentServiceTests
         // Arrange
         var request = CreateValidRequest();
         _validatorMock.Setup(v => v.Validate(request))
-                      .Returns((false, "Invalid data"));
+                      .Returns(new PaymentValidatorResult (false, "Invalid data"));
         var service = CreateService();
 
         // Act
@@ -48,7 +49,7 @@ public class PaymentServiceTests
         // Arrange
         var request = CreateValidRequest();
         _validatorMock.Setup(v => v.Validate(request))
-                      .Returns((true, (string?)null));
+                      .Returns(new PaymentValidatorResult(true, null));
         _bankServiceMock.Setup(b => b.MakePayment(request, new CancellationToken()))
                         .ReturnsAsync(new GatewayPaymentResponse
                         {
@@ -64,7 +65,7 @@ public class PaymentServiceTests
         // Assert
         Assert.Equal(PaymentStatus.Declined.ToString(), result.PaymentStatus);
         Assert.Equal("Payment is Declined by bank", result.ErrorMessage);
-        _repoMock.Verify(r => r.Add(It.IsAny<Payment>()), Times.Never);
+        _repoMock.Verify(r => r.Add(It.IsAny<Payment>()), Times.Once);
     }
 
     [Fact]
@@ -75,7 +76,7 @@ public class PaymentServiceTests
         var authCode = Guid.NewGuid();
 
         _validatorMock.Setup(v => v.Validate(request))
-                      .Returns((true, (string?)null));
+                      .Returns(new PaymentValidatorResult(true, null));
 
         _bankServiceMock.Setup(b => b.MakePayment(request, new CancellationToken()))
                         .ReturnsAsync(new GatewayPaymentResponse
@@ -88,14 +89,20 @@ public class PaymentServiceTests
 
         // Act
         var result = await service.ProcessPayment(request);
-
+        var requestLastFour = int.Parse(request.CardNumber[^4..]);
         // Assert
-        Assert.Equal(PaymentStatus.Authorized.ToString(), result.PaymentStatus);
-        Assert.Equal("OK", result.ErrorMessage);
+        Assert.Null(result.ErrorMessage);
         Assert.NotNull(result.Payment);
-        Assert.Equal(authCode, result.Payment!.Id);
 
-        _repoMock.Verify(r => r.Add(It.Is<Payment>(p => p.Id == authCode && p.Status == PaymentStatus.Authorized)), Times.Once);
+        Assert.Equal(PaymentStatus.Authorized.ToString(), result.PaymentStatus);
+        Assert.Equal(request.Amount, result.Payment!.Amount);
+        Assert.Equal(requestLastFour, result.Payment.CardNumberLastFour);
+        Assert.Equal(request.Currency, result.Payment.Currency);
+        Assert.Equal(request.ExpiryMonth, result.Payment.ExpiryMonth);
+        Assert.Equal(request.ExpiryYear, result.Payment.ExpiryYear);
+
+        _repoMock.Verify(r => r.Add(It.Is<Payment>(p => p.CardNumberLastFour == requestLastFour && p.Status == PaymentStatus.Authorized)), Times.Once);
+
         _loggerMock.Verify(l => l.Log(
             It.Is<LogLevel>(lvl => lvl == LogLevel.Information),
             It.IsAny<EventId>(),

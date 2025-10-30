@@ -1,9 +1,10 @@
-﻿using PaymentGateway.Api.Models.Requests;
+﻿using PaymentGateway.Api.Application.Dto;
+using PaymentGateway.Api.Models.Requests;
 
 namespace PaymentGateway.Api.Application.Validators
 {
     public interface IPaymentValidator
     {
-        (bool IsValid, string? ErrorMessage) Validate(PostPaymentRequest request);
+        PaymentValidatorResult Validate(PostPaymentRequest request);
     }
 }
